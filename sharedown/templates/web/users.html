@@ -1,0 +1,105 @@
+{% extends '../base.html' %}
+
+{% block title %}Users{% end %}
+
+{% block content %}
+<table class="storage table table-bordered table-striped table-hover table-condensed">
+<thead>
+    <tr>
+        <th>Login</th>
+        <th style="width: 150px;">Storage</th>
+        <th style="width: 150px;">Level</th>
+        <th style="width: 200px;">Activity at</th>
+        <th style="width: 200px;">Created at</th>
+        <th style="width: 100px;" class="text-center">
+            <a class="btn btn-xs btn-success" data-toggle="modal" data-target="#modal_user">
+                <i class="glyphicon glyphicon-plus"></i> New
+            </a>
+        </th>
+    </tr>
+</thead>
+<tbody class="users-list" data-api="{{ reverse_url('api_users') }}">
+    <tr class="users-item">
+        <td>
+            <em class="users-login"></em>
+            <a class="users-feed" target="_blank" title="Public feed enabled">
+                <i class="glyphicon glyphicon-globe"></i>
+            </a>
+        </td>
+        <td class="users-storage"></td>
+        <td class="users-level"></td>
+        <td class="users-activity"></td>
+        <td class="users-created"></td>
+        <td class="text-center">
+            <a class="btn btn-xs btn-default" data-toggle="modal" data-target="#modal_user" title="Edit">
+                <i class="glyphicon glyphicon-pencil"></i>
+            </a>
+            <a class="btn btn-xs btn-danger users-delete" title="Delete">
+                <i class="glyphicon glyphicon-trash"></i>
+            </a>
+        </td>
+    </tr>
+</tbody>
+<tfoot>
+    <tr>
+        <td colspan="6">
+            <strong class="users-total">Total: 0</strong>
+        </td>
+    </tr>
+</tfoot>
+</table>
+
+<div class="modal fade" id="modal_user" data-backdrop="static">
+    <div class="modal-dialog modal-sm">
+        <form action="{{ reverse_url('api_users') }}" method="POST" data-message="User details were successfully saved." class="modal-content">
+            <div class="modal-header">
+                <a class="close" data-dismiss="modal">&times;</a>
+                <h4 class="modal-title">User Form</h4>
+            </div>
+            <div class="modal-body">
+                <div class="pull-right">
+                    <label class="radio-inline text-danger">
+                        <input type="radio" name="is_enabled" value="0" required> disabled
+                    </label>
+                    <label class="radio-inline text-success">
+                        <input type="radio" name="is_enabled" value="1"> enabled
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="_login">Login:</label>
+                    <input type="text" class="form-control" id="_login" name="login" pattern="[\w.-]{1,32}" maxlength="32"
+                           title="Permitted only alphanumeric characters, '_', '-', and '.'" required>
+                </div>
+                <div class="form-group">
+                    <label for="_password">Password:</label>
+                    <input type="password" class="form-control" id="_password" name="password" maxlength="72">
+                </div>
+                <div class="row form-group">
+                    <div class="col-md-3"><label>Level:</label></div>
+                    <div class="col-md-9">
+                        <label class="radio-inline">
+                            <input type="radio" name="level" value="{{ handler.LEVEL_USER }}" required> User
+                        </label>
+                        <label class="radio-inline text-warning">
+                            <input type="radio" name="level" value="{{ handler.LEVEL_ADMIN }}"> Administrator
+                        </label>
+                        {% if handler.check_level(handler.LEVEL_SUPER) %}
+                            <br><label class="radio-inline text-danger">
+                                <input type="radio" name="level" value="{{ handler.LEVEL_SUPER }}"> SUPER
+                            </label>
+                        {% end %}
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% end %}
+
+{% block javascript %}
+<script src="{{ static_url('js/users.min.js') }}"></script>
+{% end %}

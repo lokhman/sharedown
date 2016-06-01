@@ -1,0 +1,125 @@
+{% extends '../base.html' %}
+
+{% block title %}File Storage{% end %}
+
+{% block content %}
+<blockquote>
+    <i class="glyphicon glyphicon-question-sign"></i>
+    You can add new files to the storage by dragging and dropping them to this window.
+    <h5>Folders cannot be uploaded to the system directly. Please use multiple files upload or ZIP folder to upload the archive.</h5>
+</blockquote>
+
+<table class="table table-bordered table-striped table-hover table-condensed storage">
+<thead>
+    <tr>
+        <th>File</th>
+        <th style="width: 100px;">Status</th>
+        <th style="width: 120px;">Size</th>
+        <th style="width: 200px;">Created at</th>
+        <th class="text-center" style="width: 100px;">
+            <a class="btn btn-xs btn-file btn-success">
+                <input type="file" class="storage-upload" multiple>
+                <i class="glyphicon glyphicon-plus"></i> Add Files
+            </a>
+        </th>
+    </tr>
+</thead>
+<tbody class="storage-list" data-api="{{ reverse_url('api_files') }}">
+    <tr class="storage-item">
+        <td class="storage-nowrap">
+            <small class="glyphicon glyphicon-menu-right"></small>
+            <a target="_blank" class="storage-name"></a>&nbsp;<small
+                class="glyphicon glyphicon-lock storage-lock" title="Password protected"></small>
+        </td>
+        <td class="text-center storage-status">
+            <span class="btn btn-xs btn-info status-info">
+                <i class="glyphicon glyphicon-info-sign"></i> Info
+            </span>
+        </td>
+        <td><abbr class="storage-size"></abbr></td>
+        <td><abbr class="storage-created"></abbr></td>
+        <td class="text-center">
+            <a class="btn btn-xs btn-danger storage-delete">
+                <i class="glyphicon glyphicon-trash"></i> Delete
+            </a>
+        </td>
+    </tr>
+    <tr class="storage-empty">
+        <td><div>There are no files in the storage</div></td>
+        <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+    </tr>
+</tbody>
+<tfoot>
+    <tr>
+        <td><strong class="storage-total">Total: 0</strong></td>
+        <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+    </tr>
+</tfoot>
+</table>
+
+<div class="modal fade" id="modal_upload" data-backdrop="static">
+    <div class="modal-dialog">
+        <form action="{{ reverse_url('api_upload') }}" class="modal-content">
+            <div class="modal-header">
+                <a class="close" data-dismiss="modal">&times;</a>
+                <h4 class="modal-title">Upload</h4>
+            </div>
+            <div class="modal-body">
+                <label>Files:</label>
+                <span class="checkbox pull-right" style="margin: 0;">
+                    <label>
+                        <input type="checkbox" name="_permanent" value="1" id="_permanent">
+                        never expires
+                    </label>
+                    <small class="glyphicon glyphicon-exclamation-sign" style="cursor: help;"
+                           title="Please use this option ONLY if you need to keep uploads in the storage for a long time."></small>
+                </span>
+                <div class="panel panel-default">
+                    <div class="panel-body upload-list">
+                        <div class="upload-item" data-text="File">
+                            <a class="close">&times;</a>
+                            <i class="glyphicon glyphicon-file"></i>
+                            <input type="hidden" name="_files[]">
+                            <span class="pull-right">
+                                <i class="glyphicon glyphicon-ok"></i>
+                                <i class="glyphicon glyphicon-remove"></i>
+                                <i class="status-progress"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-5 form-group has-warning">
+                        <label for="_password" class="control-label"><i class="glyphicon glyphicon-lock"></i> Password:</label>
+                        <input type="text" class="form-control" id="_password" name="_password" placeholder="Password for download" maxlength="72">
+                    </div>
+                    <div class="col-md-7 form-group">
+                        <label for="_caption" class="control-label">Caption:</label>
+                        <input type="text" class="form-control" id="_caption" name="_caption" placeholder="Alternative file name" maxlength="64">
+                    </div>
+                </div>
+                <div class="upload-progress">
+                    <small>
+                        Progress:
+                        <span class="upload-size"></span>
+                        <span class="pull-right upload-speed"></span>
+                    </small>
+                    <div class="progress">
+                        <div class="progress-bar"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="drop-zone" data-text="Please drag and drop files here"></div>
+{% end %}
+
+{% block javascript %}
+<script src="{{ static_url('js/storage.min.js') }}"></script>
+{% end %}

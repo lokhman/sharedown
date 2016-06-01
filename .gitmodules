@@ -1,0 +1,3 @@
+[submodule "sharedown/static/icons"]
+	path = sharedown/static/icons
+	url = https://github.com/lokhman/Free-file-icons.git

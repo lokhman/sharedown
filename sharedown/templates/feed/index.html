@@ -1,0 +1,36 @@
+{% extends '../base.html' %}
+
+{% block title %}{{ feed['title'] or feed['login'] }}{% end %}
+
+{% block content %}
+{% if feed['readme'] %}
+    {% raw markdown(feed['readme']) %}
+    <hr>
+{% end %}
+
+<div class="list-group feed-list">
+    {% for file in files %}
+        <a href="{{ reverse_url('download_index', file['key']) }}" target="_blank" class="list-group-item media">
+            <div class="media-left">
+                <img src="{{ static_url(file_icon(file['name'])) }}" width="48" height="48" alt="{{ file['caption'] }}">
+            </div>
+            <div class="media-body feed-item-body">
+                <h4 class="list-group-item-heading feed-item-name">{{ file['caption'] }}</h4>
+                <small class="list-group-item-text feed-item-info">
+                    <nobr>Size: {{ format_size(file['size']) }}</nobr>
+                    <nobr>Created at: {{ file['created_at'].isoformat(' ') }}</nobr>
+                </small>
+            </div>
+            <div class="media-right feed-item-download">
+                <i class="glyphicon glyphicon-download-alt"></i>
+            </div>
+        </a>
+    {% end %}
+
+    {% if not files %}
+        <div class="well text-center">
+            There are no files available in the storage.
+        </div>
+    {% end %}
+</div>
+{% end %}
