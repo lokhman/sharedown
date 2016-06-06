@@ -94,18 +94,14 @@ class UploadHandler(BaseHandler):
         expires_at = None if _permanent else self.s3.get_expiry_date()
         content_type = utils.normalize_content_type(_content_type, name)
 
-        self.db.begin_transaction()
-        while True:
-            key = utils.random_bytes(8)
-            try:
-                self.db.execute(
-                    "INSERT INTO files (`key`, login, name, size, caption, password, expires_at) VALUES(?)",
-                    (key, self.current_user["login"], name, size, _caption, _password, expires_at))
-                break
-            except DBALDriverError:
-                # Error: 1062 (ER_DUP_ENTRY)
-                if self.db.error_code() != 1062:
-                    raise
+        def generate_key():
+            while True:
+                _key = utils.random_bytes(8)
+                if not self.db.query("SELECT `key` FROM files WHERE `key` = ?", _key).fetch():
+                    break
+            return _key
+
+        key = yield self.application.thread_pool.submit(generate_key)
 
         try:
             yield self.application.thread_pool.submit(
@@ -114,10 +110,13 @@ class UploadHandler(BaseHandler):
                     "auth": self.current_user["login"]
                 })
         except:
-            self.db.rollback()
             raise HTTPError(503)
 
-        self.db.commit()
+        yield self.application.thread_pool.submit(
+            self.db.execute,
+            "INSERT INTO files (`key`, login, name, size, caption, password, expires_at) VALUES(?)",
+            (key, self.current_user["login"], name, size, _caption, _password, expires_at))
+
         self.write({"key": key})
 
 
