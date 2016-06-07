@@ -185,7 +185,7 @@
             'hide.bs.modal': function() {
                 if (!abort)
                     return _sharedown.modal('Cancel', 'Are you sure that you want to cancel the upload?',
-                                           _self.hideModalUpload);
+                        _self.hideModalUpload);
 
                 files = [];
             }
@@ -199,7 +199,8 @@
                 requests = 0,
                 loaded = 0,
                 defers = [],
-                failed = [];
+                failed = [],
+                ltime = 0;
 
             if (!Array.isArray(_files))
                 _files = [_files];
@@ -230,15 +231,26 @@
                             if (!e.lengthComputable)
                                 return;
 
+                            var now = +new Date();
+                            if (now - ltime < 100)
+                                return /* Safari sleep */;
+
                             var csize = loaded + e.loaded,
-                                ctime = +new Date() - time,
-                                progress = csize / size * 100,
-                                tms = ctime / csize * (size - csize);
+                                progress = csize / size * 100;
 
                             $item.addClass('upload');
                             $uploadProgressBar.css('width', progress + '%').text(Math.round(progress) + '%');
-                            $uploadSpeed.text(_self.size(csize / ctime * 1e3) + '/s ~ ' + _self.time(tms));
                             $uploadSize.text(_self.size(csize) + ' / ' + fsize);
+
+                            if (progress < 250) {
+                                var ctime = now - time,
+                                    tms = ctime / csize * (size - csize);
+
+                                $uploadSpeed.text(_self.size(csize / ctime * 1e3) + '/s ~ ' + _self.time(tms));
+                            } else
+                                $uploadSpeed.text('Processing files, please wait...');
+
+                            ltime = now;
                         };
                         return xhr;
                     }
