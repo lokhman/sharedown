@@ -56,6 +56,8 @@
                         .attr('data-login', item.login)
                         .appendTo($usersList);
                 }
+
+                Sharedown.tooltips();
             }).always(function() {
                 $usersTotal.text('Total: ' + $('.users-item').length);
             });

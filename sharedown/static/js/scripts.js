@@ -21,7 +21,7 @@
             _self._ajax_setup();
             _self._form_setup();
             _self._warnings();
-            _self._tooltips();
+            _self.tooltips();
         };
 
         this._ajax_setup = function() {
@@ -63,7 +63,7 @@
             });
         };
 
-        this._tooltips = function(parent, selector) {
+        this.tooltips = function(parent, selector) {
             $(selector || '[title]', parent).tooltip({ container: 'body' });
         };
 
