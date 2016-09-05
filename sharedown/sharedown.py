@@ -29,6 +29,7 @@ from tornado.ioloop import IOLoop
 from tornado.options import define, options, parse_command_line
 from tornado.web import Application as BaseApplication
 from concurrent.futures import ThreadPoolExecutor
+from pydbal.threading import SafeConnection
 from pydbal.connection import Connection
 from ConfigParser import ConfigParser
 from ast import literal_eval
@@ -39,8 +40,8 @@ from utils.s3 import S3
 from handlers import *
 from handlers import route
 
-version = "0.1"
-version_info = (0, 1, 0, 0)
+version = "1.4"
+version_info = (1, 4, 0, 0)
 
 __dir__ = os.path.dirname(__file__)
 
@@ -50,11 +51,10 @@ _config_defaults = dict(
         host="localhost",
     ),
     session=dict(
-        lifetime=360000,
-        interval=60,
+        lifetime=600,
     ),
     s3=dict(
-        download_url_lifetime=15,
+        download_url_lifetime=60,
         storage_lifetime=864000,
     ),
     cron=dict(
@@ -85,8 +85,10 @@ class Application(BaseApplication):
 
         self.thread_pool = ThreadPoolExecutor(options.max_workers)
 
-        self.database = Connection(**options.pydbal)
-        self.database.get_logger().propagate = False
+        db_logger = Connection.get_default_logger()
+        db_logger.propagate = False
+
+        self.database = SafeConnection(logger=db_logger, **options.pydbal)
 
         self.s3 = S3(**options.s3)
 
@@ -107,7 +109,11 @@ class Application(BaseApplication):
 @gen.coroutine
 def _cron(app):
     def task():
-        for file_ in app.database.query("SELECT * FROM files WHERE expires_at < NOW()").fetch_all():
+        # clear expired sessions
+        app.database.execute("DELETE FROM sess WHERE expires_at < NOW()")
+
+        # remove expired files
+        for file_ in app.database.query("SELECT `key`, name FROM files WHERE expires_at < NOW()"):
             app.database.execute("DELETE FROM files WHERE `key` = ?", file_["key"])
             app.s3.delete("%s/%s" % (file_["key"], file_["name"]))
 

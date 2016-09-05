@@ -25,6 +25,7 @@ from __future__ import absolute_import, division, print_function, with_statement
 import utils
 
 from tornado.web import addslash, authenticated
+from tornado.gen import coroutine
 
 from . import BaseHandler, route, check_level
 
@@ -45,28 +46,29 @@ class LoginHandler(BaseHandler):
             return
         self.render("web/login.html")
 
+    @coroutine
     def post(self):
         _login = self.get_body_argument("login")
         _password = self.get_body_argument("password")
 
-        user = self.db.query("SELECT * FROM users WHERE login = ? AND is_enabled = TRUE", _login).fetch()
+        user = yield self.thread_pool.submit(
+            self.db.fetch, "SELECT * FROM users WHERE login = ? AND is_enabled = TRUE", _login)
         if not user or utils.hash_password(_password, user["password"]) != user["password"]:
             self.set_flash("The details you entered are incorrect.", BaseHandler.FLASH_ERROR)
             self.redirect(self.reverse_url("web_login") + "?login=" + _login)
             return
 
-        session = utils.random_bytes()
-        self.db.execute(
-            "UPDATE users SET session = ?, activity_at = NOW() WHERE login = ?",
-            session, user["login"])
-
+        session = yield self.thread_pool.submit(self.create_session, user["login"])
         self.set_secure_cookie("session", session)
         self.redirect(self.reverse_url("web_index"))
 
 
 @route(r"/web/logout")
 class LogoutHandler(BaseHandler):
+    @authenticated
+    @coroutine
     def get(self):
+        yield self.thread_pool.submit(self.clear_session, self.current_user["login"], self.current_user["session"])
         self.clear_cookie("session")
         self.redirect(self.reverse_url("web_login"))
 
@@ -80,6 +82,7 @@ class FeedHandler(BaseHandler):
 
 @route(r"/web/users")
 class UsersHandler(BaseHandler):
+    @authenticated
     @check_level(
         BaseHandler.LEVEL_SUPER,
         BaseHandler.LEVEL_ADMIN)

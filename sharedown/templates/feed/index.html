@@ -1,36 +1,65 @@
 {% extends '../base.html' %}
 
+{% block stylesheet %}
+<link rel="alternate" type="application/rss+xml" href="{{ reverse_url('feed_export', feed['login'], 'rss.xml') }}" title="{% block title %}{% end %}">
+<link rel="alternate" type="application/atom+xml" href="{{ reverse_url('feed_export', feed['login'], 'atom.xml') }}" title="{% block title %}{% end %}">
+{% end %}
+
 {% block title %}{{ feed['title'] or feed['login'] }}{% end %}
 
 {% block content %}
 {% if feed['readme'] %}
-    {% raw markdown(feed['readme']) %}
-    <hr>
+    {% raw markdown(feed['readme']) %}<hr>
 {% end %}
 
-<div class="list-group feed-list">
-    {% for file in files %}
-        <a href="{{ reverse_url('download_index', file['key']) }}" target="_blank" class="list-group-item media">
-            <div class="media-left">
-                <img src="{{ static_url(file_icon(file['name'])) }}" width="48" height="48" alt="{{ file['caption'] }}">
-            </div>
-            <div class="media-body feed-item-body">
-                <h4 class="list-group-item-heading feed-item-name">{{ file['caption'] }}</h4>
-                <small class="list-group-item-text feed-item-info">
-                    <nobr>Size: {{ format_size(file['size']) }}</nobr>
-                    <nobr>Created at: {{ file['created_at'].isoformat(' ') }}</nobr>
-                </small>
-            </div>
-            <div class="media-right feed-item-download">
-                <i class="glyphicon glyphicon-download-alt"></i>
-            </div>
-        </a>
-    {% end %}
+{% for folder, files in folders.iteritems() %}
+    {% set index = folders.keys().index(folder) %}
 
-    {% if not files %}
-        <div class="well text-center">
-            There are no files available in the storage.
+    {% if folder %}
+        <div class="panel panel-default">
+            <div class="panel-heading{% if index > 0 %} collapsed{% end %}" data-toggle="collapse" data-target="#{{ id(folder) }}">
+                <h4 class="panel-title">
+                    <i class="glyphicon glyphicon-folder-open"></i>
+                    &nbsp;{{ folder }}
+                    <i class="glyphicon glyphicon-plus pull-right"></i>
+                </h4>
+            </div>
         </div>
     {% end %}
-</div>
+
+    <div id="{{ id(folder) }}" class="list-group feed-list collapse{% if not index %} in{% end %}">
+        {% for file in files %}
+            <a href="{{ reverse_url('download_index', file['key']) }}" target="_blank" class="list-group-item media">
+                <div class="media-left">
+                    <img src="{{ static_url(file_icon(file['name'])) }}" width="48" height="48" alt="{{ file['caption'] }}">
+                </div>
+                <div class="media-body feed-item-body">
+                    <h4 class="list-group-item-heading feed-item-name">{{ file['caption'] }}</h4>
+                    <small class="list-group-item-text feed-item-info">
+                        <nobr>Size: {{ format_size(file['size']) }}</nobr>
+                        <nobr>Created at: {{ file['created_at'].isoformat(' ') }}</nobr>
+                    </small>
+                </div>
+                <div class="media-right feed-item-download">
+                    <i class="glyphicon glyphicon-download-alt"></i>
+                </div>
+            </a>
+        {% end %}
+    </div>
+{% end %}
+
+{% if not folders %}
+    <div class="well text-center">
+        There are no files available in the storage.
+    </div>
+{% end %}
+
+<p>
+    <a href="{{ reverse_url('feed_export', feed['login'], 'rss.xml') }}" class="btn btn-xs btn-warning" target="_blank">
+        <i class="icon-feed"></i> RSS
+    </a>
+    <a href="{{ reverse_url('feed_export', feed['login'], 'atom.xml') }}" class="btn btn-xs btn-warning" target="_blank">
+        <i class="icon-feed"></i> ATOM
+    </a>
+</p>
 {% end %}

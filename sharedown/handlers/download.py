@@ -22,8 +22,11 @@
 
 from __future__ import absolute_import, division, print_function, with_statement
 
-from tornado.gen import coroutine
+import os.path
+import utils
+
 from tornado.web import HTTPError
+from tornado.gen import coroutine
 
 from . import BaseHandler, route
 
@@ -31,8 +34,8 @@ from . import BaseHandler, route
 @route(r"/dl/([a-zA-Z0-9]{8})")
 class IndexHandler(BaseHandler):
     def _get_file(self, key):
-        file_ = self.db.query(
-            "SELECT * FROM files WHERE `key` = ? AND (expires_at IS NULL OR expires_at > NOW())", key).fetch()
+        file_ = self.db.fetch(
+            "SELECT * FROM files WHERE `key` = ? AND (expires_at IS NULL OR expires_at > NOW())", key)
         if not file_:
             raise HTTPError(404)
         return file_
@@ -40,32 +43,74 @@ class IndexHandler(BaseHandler):
     def _set_stats(self, file_, status):
         self.db.execute(
             "INSERT INTO stats (`key`, name, status, ip) VALUES(?)",
-            (file_["key"], file_["name"], status, self.request.remote_ip))
+            (file_["key"], file_["name"], status, self.remote_ip))
 
-    def _display_dl(self, file_):
+    def _get_url(self, file_):
         try:
             url = self.s3.download_url("%s/%s" % (file_["key"], file_["name"]))
         except:
             raise HTTPError(503)
         self._set_stats(file_, BaseHandler.STATS_OK)
+        return url
+
+    @coroutine
+    def _display_url(self, file_, url):
+        agent = self.get_header("User-Agent", "").lower()
+        if any(x in agent for x in ("iphone", "ipod", "ipad")):
+            if os.path.splitext(file_["name"])[1] == ".ipa":
+                family = yield self.thread_pool.submit(
+                    self.db.fetch_column, "SELECT LOWER(value) FROM meta WHERE `key` = ? AND attribute = ?",
+                    file_["key"], "device-family")
+                if family == "iphone" and "ipad" in agent:
+                    self.set_flash(
+                        "This application is designed for iPhone. Please try it on an iPhone for a better experience.",
+                        BaseHandler.FLASH_WARNING)
+                elif family == "ipad" and "ipad" not in agent:
+                    self.set_flash(
+                        "This application is not supported on your device. Please try again with an iPad.",
+                        BaseHandler.FLASH_ERROR)
+                token = utils.tokenize_value(self.cookie_secret, url)
+                url = "itms-services://?action=download-manifest&url=%s" % (
+                    self.reverse_url("download_manifest", file_["key"], token, absolute=True)
+                )
         self.render("download/index.html", file=file_, url=url)
 
     @coroutine
     def get(self, key):
-        file_ = self._get_file(key)
+        file_ = yield self.thread_pool.submit(self._get_file, key)
         if file_["password"] is not None:
             self.render("download/password.html")
             return
 
-        yield self.application.thread_pool.submit(self._display_dl, file_)
+        url = yield self.thread_pool.submit(self._get_url, file_)
+        yield self._display_url(file_, url)
 
     @coroutine
     def post(self, key):
-        file_ = self._get_file(key)
-        if self.get_body_argument("password") != file_["password"]:
-            self._set_stats(file_, BaseHandler.STATS_FAIL)
+        _password = self.get_body_argument("password")
+
+        file_ = yield self.thread_pool.submit(self._get_file, key)
+        if file_["password"] != _password:
+            yield self.thread_pool.submit(self._set_stats, file_, BaseHandler.STATS_FAIL)
             self.set_flash("The password you entered is incorrect.", BaseHandler.FLASH_ERROR)
             self.redirect(self.reverse_url("download_index", key))
             return
 
-        yield self.application.thread_pool.submit(self._display_dl, file_)
+        url = yield self.thread_pool.submit(self._get_url, file_)
+        self._display_url(file_, url)
+
+
+@route(r"/dl/([a-zA-Z0-9]{8})/manifest.plist:(.+)")
+class ManifestHandler(BaseHandler):
+    @coroutine
+    def get(self, key, token):
+        url = utils.untokenize_value(self.cookie_secret, token)
+        if not url:
+            raise HTTPError(403)
+
+        _metadata = yield self.thread_pool.submit(
+            self.db.fetch_all, "SELECT attribute, value FROM meta WHERE `key` = ?", key)
+        metadata = {meta["attribute"]: meta["value"] for meta in _metadata}
+
+        self.set_header("Content-Type", "application/xml")
+        self.render("download/manifest.plist", url=url, metadata=metadata)

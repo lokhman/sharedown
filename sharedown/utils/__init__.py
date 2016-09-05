@@ -23,18 +23,23 @@
 from __future__ import absolute_import, division, print_function, with_statement
 
 import re
+import pytz
 import string
 import bcrypt
+import base64
 import mimetypes
 import unicodedata
 
 from datetime import datetime
 from random import SystemRandom
 from collections import Mapping, Sequence, Set
+from tornado.web import create_signed_value, decode_signed_value
 
-_string_alphanum = string.ascii_letters + string.digits
-_valid_filename_chars = frozenset("!-_.,;'()&@$=+ " + _string_alphanum)
-_re_underscore = re.compile(r"((?<=[a-z0-9])[A-Z]|(?!^)[A-Z](?=[a-z]))")
+
+_TOKENIZE_RANDOM_PADDING = 4
+_STRING_ALPHANUM = string.ascii_letters + string.digits
+_VALID_FILENAME_CHARS = frozenset("!-_.,;'()&@$=+ " + _STRING_ALPHANUM)
+_RE_UNDERSCORE = re.compile(r"((?<=[a-z0-9])[A-Z]|(?!^)[A-Z](?=[a-z]))")
 
 
 def hash_password(password, salt=None):
@@ -44,18 +49,29 @@ def hash_password(password, salt=None):
 
 
 def random_bytes(length=32):
-    return "".join(SystemRandom().choice(_string_alphanum) for _ in range(length))
+    return "".join(SystemRandom().choice(_STRING_ALPHANUM) for _ in range(length))
+
+
+def tokenize_value(key, value):
+    return base64.b64encode(random_bytes(_TOKENIZE_RANDOM_PADDING) + create_signed_value(key, "0", value))
+
+
+def untokenize_value(key, token):
+    try:
+        return decode_signed_value(key, "0", base64.b64decode(token)[_TOKENIZE_RANDOM_PADDING:])
+    except (TypeError, ValueError):
+        return None
 
 
 def underscore(word):
-    return _re_underscore.sub(r"_\1", word).lower()
+    return _RE_UNDERSCORE.sub(r"_\1", word).lower()
 
 
 def normalize_filename(filename):
     if not isinstance(filename, unicode):
         filename = filename.decode("utf-8")
     filename = unicodedata.normalize("NFKD", filename).encode("ascii", "ignore")
-    return "".join(x for x in filename.strip() if x in _valid_filename_chars)[:255]
+    return "".join(x for x in filename.strip() if x in _VALID_FILENAME_CHARS)[:255]
 
 
 def normalize_content_type(content_type=None, filename=None):
@@ -73,10 +89,21 @@ def normalize_chunk(chunk, sep=" "):
     """
     if isinstance(chunk, Mapping):
         for key, value in chunk.iteritems():
-            chunk[key] = normalize_chunk(value)
+            chunk[key] = bool(value) if key.startswith(("is_", "has_")) else normalize_chunk(value)
     elif isinstance(chunk, (Sequence, Set)) and not isinstance(chunk, (str, unicode)):
         for index, value in enumerate(chunk):
             chunk[index] = normalize_chunk(value)
     elif isinstance(chunk, datetime):
         return chunk.isoformat(sep)
     return chunk
+
+
+def datetime_parse(dt_str):
+    try:
+        return datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return None
+
+
+def timezone_localize(dt):
+    return dt.replace(tzinfo=pytz.UTC)

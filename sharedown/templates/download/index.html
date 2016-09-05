@@ -1,13 +1,14 @@
 {% extends '../base.html' %}
 
-{% block title %}Download File{% end %}
-{% block subtitle %}{{ file['name'] }}{% end %}
+{% block title %}Download{% end %}
+{% block subtitle %}{{ file['caption'] or file['name'] }}{% end %}
 
 {% block content %}
 <p class="lead">Thank you! The download should start in a second...</p>
 <p>Problems with the download? Please use this <a href="{{ url }}">direct link</a>.</p>
+<hr><em class="small">{{ file['name'] }}</em>
 {% end %}
 
 {% block javascript %}
-<script>window.Sharedown.download('{% raw url %}');</script>
+<script>window.Sharedown.download('{% raw url %}', {{ 10 if flash else 1 }});</script>
 {% end %}

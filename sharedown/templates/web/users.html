@@ -7,8 +7,8 @@
 <thead>
     <tr>
         <th>Login</th>
-        <th style="width: 150px;">Storage</th>
         <th style="width: 150px;">Level</th>
+        <th style="width: 150px;">Storage</th>
         <th style="width: 200px;">Activity at</th>
         <th style="width: 200px;">Created at</th>
         <th style="width: 100px;" class="text-center">
@@ -21,13 +21,18 @@
 <tbody class="users-list" data-api="{{ reverse_url('api_users') }}">
     <tr class="users-item">
         <td>
-            <em class="users-login"></em>
-            <a class="users-feed" target="_blank" title="Public feed enabled">
-                <i class="glyphicon glyphicon-globe"></i>
-            </a>
+            <span class="users-login"></span>
+            <span class="pull-right">
+                <small class="glyphicon glyphicon-warning-sign text-danger users-token"></small>
+                <a class="text-success users-feed" target="_blank" title="Feed is enabled">
+                    <small class="glyphicon glyphicon-globe"></small>
+                </a>
+            </span>
         </td>
-        <td class="users-storage"></td>
         <td class="users-level"></td>
+        <td class="users-storage">
+            {% if handler.check_level(handler.LEVEL_SUPER) %}<a></a>{% else %}<span></span>{% end %}
+        </td>
         <td class="users-activity"></td>
         <td class="users-created"></td>
         <td class="text-center">
@@ -51,7 +56,7 @@
 
 <div class="modal fade" id="modal_user" data-backdrop="static">
     <div class="modal-dialog modal-sm">
-        <form action="{{ reverse_url('api_users') }}" method="POST" data-message="User details were successfully saved." class="modal-content">
+        <form action="{{ reverse_url('api_users') }}" method="POST" class="modal-content" data-message="User details were successfully saved.">
             <div class="modal-header">
                 <a class="close" data-dismiss="modal">&times;</a>
                 <h4 class="modal-title">User Form</h4>
@@ -62,23 +67,35 @@
                         <input type="radio" name="is_enabled" value="0" required> disabled
                     </label>
                     <label class="radio-inline text-success">
-                        <input type="radio" name="is_enabled" value="1"> enabled
+                        <input type="radio" name="is_enabled" value="1" checked> enabled
                     </label>
                 </div>
                 <div class="form-group">
                     <label for="_login">Login:</label>
-                    <input type="text" class="form-control" id="_login" name="login" pattern="[\w.-]{1,32}" maxlength="32"
-                           title="Permitted only alphanumeric characters, '_', '-', and '.'" required>
+                    <input type="text" class="form-control" id="_login" name="login" pattern="[\w.-]{2,32}" maxlength="32"
+                        title="Permitted only alphanumeric characters, '_', '-', and '.'" required>
                 </div>
                 <div class="form-group">
                     <label for="_password">Password:</label>
                     <input type="password" class="form-control" id="_password" name="password" maxlength="72">
                 </div>
+                {% if handler.check_level(handler.LEVEL_SUPER) %}
+                    <div class="form-group users-token-group">
+                        <label>API Token:</label>
+                        [ <a class="users-token-show">show token</a> ]
+                        <span class="pull-right">
+                            <a class="text-warning users-token-update" title="Update API token"><small class="glyphicon glyphicon-refresh"></small></a>
+                            <a class="text-danger users-token-delete" title="Delete API token"><small class="glyphicon glyphicon-remove"></small></a>
+                        </span>
+                    </div>
+                {% end %}
                 <div class="row form-group">
-                    <div class="col-md-3"><label>Level:</label></div>
-                    <div class="col-md-9">
+                    <div class="col-md-2" style="white-space: nowrap;">
+                        <label>Level:</label>
+                    </div>
+                    <div class="col-md-10">
                         <label class="radio-inline">
-                            <input type="radio" name="level" value="{{ handler.LEVEL_USER }}" required> User
+                            <input type="radio" name="level" value="{{ handler.LEVEL_USER }}" required checked> User
                         </label>
                         <label class="radio-inline text-warning">
                             <input type="radio" name="level" value="{{ handler.LEVEL_ADMIN }}"> Administrator

@@ -29,7 +29,7 @@ from boto3.s3.transfer import S3Transfer
 from datetime import datetime, timedelta
 
 
-class S3(object):
+class S3:
     SIGNATURE_VERSION = "s3v4"
     DEFAULT_CONTENT_TYPE = "binary/octet-stream"
     VALID_CONTENT_TYPES = (
@@ -65,3 +65,8 @@ class S3(object):
 
     def delete(self, key):
         return self._client.delete_object(Bucket=self._bucket, Key=key)
+
+    def delete_many(self, keys):
+        return self._client.delete_objects(Bucket=self._bucket, Delete={
+            "Objects": map(lambda x: {"Key": x}, keys)
+        })

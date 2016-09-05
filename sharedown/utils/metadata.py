@@ -22,36 +22,33 @@
 
 from __future__ import absolute_import, division, print_function, with_statement
 
-import utils
 import os.path
-import markdown as _markdown
+
+from ipa import IPAFile
 
 
-def wrap(handler, chunk, wrapper):
-    if wrapper[0] == "<" and wrapper[-1] == ">":
-        return wrapper + chunk + "</%s>" % wrapper[1:-1].split(" ")[0]
-    return wrapper + chunk + wrapper
+class Metadata(dict):
+    DEVICE_FAMILY = "device-family"
+    APP_NAME = "app-name"
+    APP_VERSION = "app-version"
+    BUNDLE_ID = "bundle-id"
 
+    def __init__(self, path, ext=None):
+        if ext is None:
+            ext = os.path.splitext(path.lower())[1]
 
-def wrap_if(handler, chunk, wrapper, clause):
-    return wrap(handler, chunk, wrapper) if clause else chunk
+        try:
+            if ext == ".ipa":
+                super(Metadata, self).__init__(Metadata._ipa(path))
+        except StandardError:
+            pass
 
-
-def file_icon(handler, filename):
-    return "icons/48px/%s.png" % os.path.splitext(filename)[1].strip(".").lower()
-
-
-def markdown(handler, chunk):
-    return _markdown.markdown(chunk, output_format="html5")
-
-
-def format_size(handler, size):
-    for unit in ["bytes", "KB", "MB", "GB", "TB"]:
-        if abs(size) < 1024.0:
-            return "%3.2f %s" % (size, unit)
-        size /= 1024.0
-    return "%.2f %s" % (size, "PB")
-
-
-def random_bytes(handler, length):
-    return utils.random_bytes(length)
+    @staticmethod
+    def _ipa(path):
+        with IPAFile(path) as ipa:
+            return (
+                (Metadata.DEVICE_FAMILY, ipa.get_device_family()),
+                (Metadata.APP_NAME, ipa.get_app_name()),
+                (Metadata.APP_VERSION, ipa.get_app_version()),
+                (Metadata.BUNDLE_ID, ipa.app_info["CFBundleIdentifier"]),
+            )
